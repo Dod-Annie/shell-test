@@ -1,0 +1,53 @@
+image: shein/nodejs-svn
+
+before_script:
+  - export COMP_NAME=Zoom
+
+stages:
+  - test
+  - build
+  - deploy
+
+ut:
+  stage: test
+  script:
+    - yarn
+    - yarn build
+    - yarn test
+  only:
+    - master
+  tags:
+    - web
+  cache:
+    key: "$CI_PROJECT_NAME"
+    paths:
+      - node_modules/
+
+doc:
+  stage: build
+  script:
+    - echo ${DOC_PUB_URL}project/$COMP_NAME
+    - export GIT_REPO=$(echo $CI_PROJECT_URL | sed -e "s|$GIT_ADDR_INNER|$GIT_ADDR_OUTER|g")
+    - echo $GIT_REPO
+    - curl -X POST -H "Content-Type:application/json" -H "X-AUTH-TOKEN:${DOC_PUB_TOKEN}" --data "{\"sshRepo\":\"${GIT_REPO}\"}" ${DOC_PUB_URL}project/$COMP_NAME
+  only:
+    - /^doc_v.*$/
+  tags:
+    - web
+
+publish:
+  stage: deploy
+  script:
+    - yarn
+    - yarn build
+    - yarn test
+    - echo $PUBLISH_TOKEN >> .npmrc
+    - npm publish
+  only:
+    - /^release_v.*$/
+  tags:
+    - web
+  cache:
+    key: "$CI_PROJECT_NAME"
+    paths:
+      - node_modules/
